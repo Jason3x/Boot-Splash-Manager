@@ -60,6 +60,21 @@ UNIT="bootsplash-anim.service"
 DISABLE_FLAG="$SPLASH_DIR/disabled"
 BACKTITLE="Boot splash manager by Jason"
 
+TTY_ROWS=21
+TTY_COLS=58
+if read -r _r _c < <(stty size < "$CURR_TTY" 2>/dev/null); then
+    [[ "$_r" =~ ^[0-9]+$ ]] && (( _r > 8 ))  && TTY_ROWS="$_r"
+    [[ "$_c" =~ ^[0-9]+$ ]] && (( _c > 30 )) && TTY_COLS="$_c"
+fi
+BOX_TOP=2
+BOX_LEFT=2
+BOX_H=$(( TTY_ROWS - BOX_TOP - 2 ))
+BOX_W=$(( TTY_COLS - BOX_LEFT - 4 ))
+(( BOX_H > 20 )) && BOX_H=20
+(( BOX_W > 60 )) && BOX_W=60
+LIST_H=$(( BOX_H - 8 ))
+(( LIST_H < 3 )) && LIST_H=3
+
 sudo mkdir -p "$SEQ_DIR" "$RANDOM_DIR" 2>/dev/null
 sudo chown -R ark:ark "$SPLASH_DIR" 2>/dev/null
 
@@ -589,7 +604,8 @@ SelectSplash() {
         --title "Select splash" \
         --cancel-label "Back" \
         --no-tags \
-        --menu "Current : $sel\nSet duration at or above the length shown" 19 54 11 \
+        --begin $BOX_TOP $BOX_LEFT \
+        --menu "Current : $sel\nSet duration at or above the length shown" $BOX_H $BOX_W $LIST_H \
         "${menu_items[@]}" 2>&1 > $CURR_TTY)
 
     [[ $? != 0 || -z "$choice" ]] && return
@@ -750,7 +766,8 @@ TelechargerFichier() {
 
     choice=$(dialog --clear --backtitle "$BACKTITLE" --title "Download" \
         --cancel-label "Back" --no-tags \
-        --menu "Files in $folder" 18 54 8 \
+        --begin $BOX_TOP $BOX_LEFT \
+        --menu "Files in $folder" $BOX_H $BOX_W $LIST_H \
         "${menu[@]}" 2>&1 > $CURR_TTY)
     [[ $? != 0 || -z "$choice" ]] && return
 
@@ -802,7 +819,8 @@ TelechargerSequences() {
 
     choice=$(dialog --clear --backtitle "$BACKTITLE" --title "Download" \
         --cancel-label "Back" --no-tags \
-        --menu "PNG sequences" 18 54 8 \
+        --begin $BOX_TOP $BOX_LEFT \
+        --menu "PNG sequences" $BOX_H $BOX_W $LIST_H \
         "${menu[@]}" 2>&1 > $CURR_TTY)
     [[ $? != 0 || -z "$choice" ]] && return
 
@@ -848,7 +866,8 @@ DownloadSequence() {
     while true; do
         choice=$(dialog --clear --backtitle "$BACKTITLE" --title "Download" \
             --cancel-label "Back" \
-            --menu "From $REPO" 12 54 3 \
+            --begin $BOX_TOP $BOX_LEFT \
+            --menu "From $REPO" 12 $BOX_W 3 \
             1 "PNG sequences" \
             2 "GIF" \
             3 "Videos" 2>&1 > $CURR_TTY)
@@ -877,7 +896,8 @@ SetDuration() {
         --backtitle "$BACKTITLE" \
         --title "Splash duration" \
         --cancel-label "Back" \
-        --menu "Current : $(CurrentDuration)s\n\nShorter splash = faster boot.\nBelow 3s the animation may be\nhidden by the welcome message." 17 54 6 \
+        --begin $BOX_TOP $BOX_LEFT \
+        --menu "Current : $(CurrentDuration)s\n\nShorter splash = faster boot." $BOX_H $BOX_W $LIST_H \
         3 "3 seconds  (fastest boot)" \
         4 "4 seconds" \
         5 "5 seconds" \
@@ -991,7 +1011,8 @@ MainMenu() {
         --no-collapse \
         --clear \
         --cancel-label "Exit" \
-        --menu "$(StatusBanner)" 19 54 7)
+        --begin $BOX_TOP $BOX_LEFT \
+        --menu "$(StatusBanner)" $BOX_H $BOX_W $LIST_H)
     mainoptions=( 1 "Install boot splash" \
                   2 "Select splash" \
                   3 "Download PNG sequence" \
