@@ -20,13 +20,10 @@ animation, against roughly 10 seconds with ffplay alone.
 ## Install
 
 Copy `Boot Splash Manager.sh` to your ports folder, for example
-`/roms/ports/`, then launch it from EmulationStation and choose
+`/roms/tools/`, then launch it from EmulationStation and choose
 **Install boot splash**. That writes the player to
 `/usr/local/bin/bootsplash-anim.sh`, creates the systemd unit, and prepares the
 folder tree.
-
-Requirements: `ffmpeg` (for `ffplay` and `ffprobe`), `dialog`, `curl`, and
-`openvt` from the `kbd` package. All are present on a standard dArkOS image.
 
 ## Menu
 
@@ -72,71 +69,6 @@ The download menu reads these three folders directly, so anything added here
 becomes available on the console. Sequence frames are renumbered to `%04d.png`
 on download, which means the alphabetical order matches the playing order
 whatever the original names were.
-
-## Preparing media
-
-A 640x480 video weighs less and decodes faster than a large GIF:
-
-```bash
-ffmpeg -i source.gif \
-  -vf "scale=640:480:force_original_aspect_ratio=decrease,pad=640:480:(ow-iw)/2:(oh-ih)/2" \
-  -c:v libx264 -preset veryfast -pix_fmt yuv420p -an output.mp4
-```
-
-The framebuffer has no compositor, so transparency has nothing behind it. The
-decoder flattens every frame onto black, and side bars are black too. If your
-source has a white background baked into the pixels, remove it before adding it
-here:
-
-```bash
-ffmpeg -y -f lavfi -i color=c=black:s=640x480 -i source.gif \
-  -filter_complex "[1:v]colorkey=0xFFFFFF:0.12:0.0,scale=640:480:force_original_aspect_ratio=decrease[fg];[0:v][fg]overlay=(W-w)/2:(H-h)/2:shortest=1,format=yuv420p" \
-  -c:v libx264 -preset veryfast -an output.mp4
-```
-
-Raise the `0.12` threshold if a white fringe remains, lower it if light parts of
-the subject turn black.
-
-For a PNG sequence, 25 frames per second is what the player assumes:
-
-```bash
-ffmpeg -i source.mp4 -vf "fps=25" frames/%04d.png
-```
-
-## Disk usage
-
-Raw frames cost width x height x 4 bytes each, so about 1.2 MB per frame at
-640x480, or roughly 120 MB for a 4 second animation at 25 fps. Decoded sets are
-kept so that switching back to a media you already used is instant. To reclaim
-space:
-
-```bash
-du -sh /roms/bootsplash/.raw/*
-rm -rf /roms/bootsplash/.raw/<key>
-```
-
-## Troubleshooting
-
-**The splash does not show.** Anything that writes to `/dev/tty1` while the
-animation plays redraws the console over it. `welcome-message.service` calls
-`setfont` twice during boot, which is why the unit is ordered after it. Check
-with `journalctl -b -u bootsplash-anim.service -o short-monotonic`.
-
-**Debug output.** Run the player by hand:
-
-```bash
-sudo systemctl stop emulationstation
-sudo BOOTSPLASH_DEBUG=1 BOOTSPLASH_JOURNAL=1 /usr/local/bin/bootsplash-anim.sh
-sudo systemctl start emulationstation
-```
-
-It prints the screen size, the selection, the duration, the frame count and the
-playback rate.
-
-**Boot feels slow.** The splash blocks EmulationStation for its whole length, by
-design, so it covers the loading. `systemd-analyze blame` shows what else is
-taking time; `systemd-analyze critical-chain emulationstation.service` shows
-what actually delays the interface.
 
 ## License
 
