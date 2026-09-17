@@ -50,6 +50,7 @@ RANDOM_DIR="$SPLASH_DIR/random"
 SEL_FILE="$SPLASH_DIR/selected"
 DUR_FILE="$SPLASH_DIR/duration"
 RAW_DIR="$SPLASH_DIR/.raw"
+DUR_CACHE="$SPLASH_DIR/.durations"
 THEMES_DIR="$SPLASH_DIR/themes"
 REPO="Jason3x/Boot-Splash-Manager"
 REPO_API="https://api.github.com/repos/$REPO/contents"
@@ -76,6 +77,7 @@ LIST_H=$(( BOX_H - 8 ))
 (( LIST_H < 3 )) && LIST_H=3
 
 sudo mkdir -p "$SEQ_DIR" "$RANDOM_DIR" 2>/dev/null
+sudo touch "$DUR_CACHE" 2>/dev/null
 sudo chown -R ark:ark "$SPLASH_DIR" 2>/dev/null
 
 SPLASH_TIME="n/a"
@@ -551,14 +553,43 @@ InstallSplash() {
 
 # Duree d'un media en secondes, vide si image fixe
 MediaDuration() {
-    local ext d
-    ext="${1##*.}"; ext="${ext,,}"
+    local f="$1" ext line
+    ext="${f##*.}"; ext="${ext,,}"
     case "$ext" in
         png|jpg|jpeg|bmp) echo ""; return ;;
     esac
+    line="$(grep -F -m1 "$(stat -c %Y "$f" 2>/dev/null)|$f|" "$DUR_CACHE" 2>/dev/null)"
+    if [[ -n "$line" ]]; then
+        echo "${line##*|}"
+        return
+    fi
+    ProbeDuration "$f" | tee -a "$DUR_CACHE" | sed 's/.*|//'
+}
+
+# Sonde un fichier et renvoie la ligne de cache correspondante
+ProbeDuration() {
+    local d
     d="$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$1" 2>/dev/null)"
-    [[ "$d" =~ ^[0-9.]+$ ]] || { echo ""; return; }
-    awk -v d="$d" 'BEGIN { printf "%.1f", d }'
+    [[ "$d" =~ ^[0-9.]+$ ]] && d="$(awk -v x="$d" 'BEGIN { printf "%.1f", x }')" || d=""
+    printf '%s|%s|%s\n' "$(stat -c %Y "$1" 2>/dev/null)" "$1" "$d"
+}
+
+# Sonde en parallele tout ce qui manque au cache
+PrefetchDurations() {
+    local f todo=() ext
+    [[ -f "$DUR_CACHE" ]] || { : > "$DUR_CACHE" 2>/dev/null || return; }
+    for f in "$@"; do
+        ext="${f##*.}"; ext="${ext,,}"
+        case "$ext" in png|jpg|jpeg|bmp) continue ;; esac
+        grep -qF "$(stat -c %Y "$f" 2>/dev/null)|$f|" "$DUR_CACHE" 2>/dev/null && continue
+        todo+=("$f")
+    done
+    (( ${#todo[@]} == 0 )) && return
+    printf '%s\0' "${todo[@]}" | xargs -0 -P 4 -I{} sh -c '
+        d=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$1" 2>/dev/null)
+        case "$d" in ""|*[!0-9.]*) d="" ;; *) d=$(awk -v x="$d" "BEGIN { printf \"%.1f\", x }") ;; esac
+        printf "%s|%s|%s\n" "$(stat -c %Y "$1" 2>/dev/null)" "$1" "$d"
+    ' _ {} >> "$DUR_CACHE" 2>/dev/null
 }
 
 # Choisit le media et cale la duree dessus
@@ -587,6 +618,8 @@ SelectSplash() {
         menu_items+=("theme:$th" "$th  [$(awk -v n="$n" 'BEGIN{printf "%.1f", n/25}')s]")
     done
     shopt -u nullglob
+
+    PrefetchDurations "${roots[@]}" "${pool[@]}"
 
     local f dur
     for f in "${roots[@]}" "${pool[@]}"; do
