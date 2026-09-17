@@ -108,7 +108,7 @@ sudo systemctl start emulationstation
 ## 🙏 Thanks
 
 - [christianhaitian](https://github.com/christianhaitian) for ArkOS and the R36S ecosystem
-- [djparentx](https://github.com/djparentx) for dArkOS EN
+- [djparentx](https://github.com/djparentx) for dArkOSen
 
 ---
 
