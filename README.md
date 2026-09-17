@@ -24,7 +24,7 @@ Everything is managed from the console itself, with the gamepad — no PC needed
 
 ## 🚀 Installation
 
-1. Copy **`Boot Splash Manager.sh`** to `/roms/ports/` on your SD card
+1. Copy **`Boot Splash Manager.sh`** to `/roms/tools/` on your SD card
 2. Launch it from the **Ports** section on your device
 3. Choose **Install boot splash**
 
