@@ -1,7 +1,7 @@
 # Boot Splash Manager — R36S
 
 ![Platform](https://img.shields.io/badge/Platform-R36S-blue)
-![OS](https://img.shields.io/badge/OS-dArkOS%20EN-green)
+![OS](https://img.shields.io/badge/OS-dArkOSen-green)
 ![Shell](https://img.shields.io/badge/Bash-Script-yellow)
 ![License](https://img.shields.io/badge/License-Free-lightgrey)
 
