@@ -25,12 +25,10 @@ Everything is managed from the console itself, with the gamepad — no PC needed
 ## 🚀 Installation
 
 1. Copy **`Boot Splash Manager.sh`** to `/roms/tools/` on your SD card
-2. Launch it from the **Ports** section on your device
+2. Launch it from the **tools** section on your device
 3. Choose **Install boot splash**
 
 That's it. Pick a splash, reboot, enjoy.
-
-> Needs `ffmpeg`, `dialog`, `curl` and `openvt` — all present on a standard dArkOS EN image.
 
 ---
 
