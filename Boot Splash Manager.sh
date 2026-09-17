@@ -211,9 +211,9 @@ DecoderUn() {
     return 0
 }
 
-# Decode tout ce que la selection peut jouer
+# Decode tout ce que la selection peut jouer, en arriere-plan
 GenererSequence() {
-    local sel targets=() t ok=0
+    local sel targets=() t
 
     command -v ffmpeg >/dev/null || return
     sel="$(CurrentSelection)"
@@ -239,16 +239,22 @@ GenererSequence() {
 
     (( ${#targets[@]} == 0 )) && return
 
-    dialog --backtitle "$BACKTITLE" --title "Select splash" \
-        --infobox "Preparing splash..." 3 40 > $CURR_TTY
+    # Le decodage ecrit ~1.2 Mo par image sur la carte SD : c'est long et rien
+    # n'en depend tant que le splash n'est pas rejoue. On rend la main tout de
+    # suite. Le lecteur n'utilise une sequence brute que si son fichier meta
+    # existe, ecrit en dernier : un decodage en cours est donc ignore, et
+    # ffplay prend le relais si le boot arrive avant la fin.
+    sudo mkdir -p "$RAW_DIR" 2>/dev/null
+    sudo touch "$RAW_DIR/.busy" 2>/dev/null
 
-    for t in "${targets[@]}"; do
-        DecoderUn "$t" && ok=$((ok + 1))
-    done
-
-    sudo chown -R ark:ark "$RAW_DIR" 2>/dev/null
-
-    (( ok == 0 )) && sudo rm -rf "$RAW_DIR"
+    (
+        for t in "${targets[@]}"; do
+            DecoderUn "$t"
+        done
+        sudo chown -R ark:ark "$RAW_DIR" 2>/dev/null
+        sudo rm -f "$RAW_DIR/.busy" 2>/dev/null
+    ) >/dev/null 2>&1 &
+    disown 2>/dev/null
     return 0
 }
 
@@ -1021,6 +1027,7 @@ StatusBanner() {
 
     sel="$(CurrentSelection)"
     [[ "$sel" == /* ]] && sel="$(basename "$sel")"
+    [[ -e "$RAW_DIR/.busy" ]] && sel="$sel \Z3(preparing)\Zn"
 
     echo "Player : $installed    Service : $enabled    Splash : $active\nSelection : \Z4$sel\Zn    Duration : \Z4$(CurrentDuration)s\Zn\nSplash time : \Z4$SPLASH_TIME\Zn    Total boot : \Z4$BOOT_TOTAL\Zn\n\nChoose an option"
 }
